@@ -61,6 +61,30 @@ module Vault
       end
     end
 
+    describe "#approle" do
+      before(:context) do
+        @role = "testrole"
+
+        vault_test_client.sys.enable_auth("approle", "approle", nil)
+        vault_test_client.logical.write("auth/approle/role/#{@role}", {})
+        @role_id = vault_test_client.logical.read("auth/approle/role/#{@role}/role-id").data[:role_id]
+        @secret_id = vault_test_client.logical.write("auth/approle/role/#{@role}/secret-id").data[:secret_id]
+      end
+
+      it "authenticates and saves the token on the client" do
+        result = subject.auth.approle(@role_id, @secret_id)
+        expect(subject.token).to eq(result.auth.client_token)
+      end
+
+      it "raises an error if the authentication is bad" do
+        expect {
+          expect {
+            subject.auth.app_id("nope", "bad")
+          }.to raise_error(HTTPError)
+        }.to_not change(subject, :token)
+      end
+    end
+
     describe "#userpass" do
       before(:context) do
         @username = "sethvargo"
